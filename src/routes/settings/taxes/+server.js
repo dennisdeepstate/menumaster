@@ -23,7 +23,7 @@ async function findTaxType(taxType){
 export async function GET({ url }) {
     response.status = 200
     let taxType = url.searchParams.get('type') ?? ''
-    taxType.trim()
+    taxType = taxType.trim()
     const find = url.searchParams.get('find') ?? ''
     if(find === "all"){
         response.message = {success: (await findAllTaxTypes()).taxes}
@@ -39,7 +39,7 @@ export async function GET({ url }) {
 }
 export async function POST({ url }) {
     let newTaxType = url.searchParams.get('type') ?? ''
-    newTaxType.trim()
+    newTaxType = newTaxType.trim()
     let newTaxRate = url.searchParams.get('rate') ?? '0'
     newTaxRate = parseFloat(newTaxRate.trim())
     const newTax = new Tax(newTaxType.toUpperCase(), newTaxRate)
@@ -62,7 +62,7 @@ export async function POST({ url }) {
 }
 export async function PUT({ url }) {
     let taxType = url.searchParams.get('type') ?? ''
-    taxType.trim()
+    taxType = taxType.trim()
     let newTaxRate = url.searchParams.get('rate') ?? ''
     newTaxRate = parseFloat(newTaxRate.trim())
     const updateTax = {type: taxType.toUpperCase(), rate: newTaxRate}
@@ -85,8 +85,8 @@ export async function PUT({ url }) {
 }
 export async function DELETE({ url }) {
     response.status = 200
-    const taxType = url.searchParams.get('type') ?? ''
-    taxType.trim()
+    let taxType = url.searchParams.get('type') ?? ''
+    taxType = taxType.trim()
     if(await findTaxType(taxType)){
         await companies.updateOne({name: companyName},{$pull : {taxes: {type: taxType.toUpperCase()} }})
         response.status = 200

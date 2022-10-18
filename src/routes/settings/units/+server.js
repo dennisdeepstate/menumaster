@@ -40,7 +40,7 @@ async function findOneUnitByName(unitName){
 export async function GET({ url }) {
     response.status = 200
     let unit = url.searchParams.get('unit') ?? ''
-    unit.trim()
+    unit = unit.trim()
     const find = url.searchParams.get('find') ?? ''
     if(find === "all"){
         response.message = {success: await findAllUnits()}
@@ -56,15 +56,15 @@ export async function GET({ url }) {
 }
 export async function POST({ url }) {
     let newUnitAlias = url.searchParams.get('unit') ?? ''
-    newUnitAlias.trim().toLowerCase()
+    newUnitAlias = newUnitAlias.trim().toLowerCase()
     let newUnitType = url.searchParams.get('type') ?? ''
-    newUnitType.trim().toLowerCase()
+    newUnitType = newUnitType.trim().toLowerCase()
     let newUnitConversion = url.searchParams.get('conversion') ?? '0'
     newUnitConversion = parseFloat(newUnitConversion.trim())
     let newUnitParent = url.searchParams.get('parent') ?? ''
-    newUnitParent.trim().toLowerCase()
+    newUnitParent = newUnitParent.trim().toLowerCase()
 
-    const newUnit = new UnitOfMeasure(newUnitAlias, `${newUnitAlias}*${newUnitConversion}_${newUnitParent}`, newUnitType, newUnitConversion)
+    const newUnit = new UnitOfMeasure(newUnitAlias, `${newUnitAlias}*${newUnitConversion}_${newUnitParent}` , newUnitType , newUnitConversion , true)
     const errors = verifyUnit(newUnit)
 
     if(errors.length === 0){
@@ -90,13 +90,14 @@ export async function POST({ url }) {
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
 export async function PUT({ url }) {
-    const unitName = url.searchParams.get('unit') ?? ''
+    let unitName = url.searchParams.get('unit') ?? ''
+    unitName = unitName.trim().toLowerCase()
     let isActive = url.searchParams.get('active') ?? ''
     isActive = isActive === "false" ? false : true
     if(await findOneCustomUnitByName(unitName)){
         await companies.updateOne({name: companyName, "units.name" : unitName },{$set: {"units.$.isActive": isActive} })
         response.status = 200
-        response.message = {success: `${unitName} is ${isActive ? '' : 'no longer'} active`}
+        response.message = {success: `${unitName} is ${isActive ? 'now' : 'no longer'} active`}
     }else{
         response.status = 403
         response.message = {error: `the unit (${unitName}) does not exist`}
