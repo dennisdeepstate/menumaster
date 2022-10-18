@@ -1,0 +1,5 @@
+Success: Sun Oct 16 2022 10:21:43 GMT+0300 (East Africa Time): ::1 connected to MongoDbError: Sun Oct 16 2022 10:22:31 GMT+0300 (East Africa Time): ::1 : MongoServerSelectionError: connect ECONNREFUSED 127.0.0.1:7017Error: Sun Oct 16 2022 10:22:32 GMT+0300 (East Africa Time): ::1 : MongoServerSelectionError: connect ECONNREFUSED 127.0.0.1:7017Error: Sun Oct 16 2022 10:22:41 GMT+0300 (East Africa Time): ::1 : MongoServerSelectionError: connect ECONNREFUSED 127.0.0.1:7017Error: Sun Oct 16 2022 10:22:56 GMT+0300 (East Africa Time): ::1 : MongoServerSelectionError: connect ECONNREFUSED 127.0.0.1:7017
+Success: Sun Oct 16 2022 10:23:15 GMT+0300 (East Africa Time): ::1 connected to MongoDb
+Success: Sun Oct 16 2022 10:23:15 GMT+0300 (East Africa Time): ::1 connected to MongoDb
+Error: Sun Oct 16 2022 10:23:37 GMT+0300 (East Africa Time): ::1 : MongoServerSelectionError: connect ECONNREFUSED 127.0.0.1:7017
+Error: Mon Oct 17 2022 19:03:23 GMT+0300 (East Africa Time): MongoServerSelectionError: connect ECONNREFUSED 127.0.0.1:27017
