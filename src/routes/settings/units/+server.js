@@ -16,7 +16,7 @@ const companies = db.collection('Companies')
 const units = db.collection('Units')
 let response = {
     status: 500,
-    message: {error:"an error occured on the server"}
+    message: {error: ["an error occured on the server"]}
 }
 
 async function findAllUnits(){
@@ -50,7 +50,7 @@ export async function GET({ url }) {
         response.message = msg
     }else{
         response.status = 403
-        response.message = {error: "find parameter not defined"}
+        response.message = {error: ["find parameter not defined"]}
     }
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
@@ -64,23 +64,25 @@ export async function POST({ url }) {
     let newUnitParent = url.searchParams.get('parent') ?? ''
     newUnitParent = newUnitParent.trim().toLowerCase()
 
-    const newUnit = new UnitOfMeasure(newUnitAlias, `${newUnitAlias}*${newUnitConversion}_${newUnitParent}` , newUnitType , newUnitConversion , true)
+    let newUnit = new UnitOfMeasure(newUnitAlias, `${newUnitAlias}*${newUnitConversion}_${newUnitParent}` , newUnitType , newUnitConversion)
     const errors = verifyUnit(newUnit)
 
     if(errors.length === 0){
         if((!await findOneCustomUnitByName(newUnit.name)) && (!await findOneUnit(newUnit.unit))){
             const parent = await findOneCustomUnitByName(newUnitParent) || await findOneUnitByName(newUnitParent)
-            if(parent && parent.type === newUnit.type){
+            if(parent){
+                newUnit.type = parent.type
+                newUnit.conversion = newUnitConversion * parent.conversion
                 await companies.updateOne({name: companyName},{$push : {units: newUnit }})
                 response.status = 200
                 response.message = { success: newUnit }
             }else{
                 response.status = 403
-                response.message = {error: `The unit's parent does not exist`}
+                response.message = {error: [`The unit's parent does not exist`]}
             } 
         }else{
             response.status = 403
-            response.message = {error: `The unit (${newUnit.unit}) with a (${newUnit.conversion}x) conversion to the unit (${newUnitParent}) already exists`}
+            response.message = {error: [`The unit (${newUnit.unit}) with a (${newUnit.conversion}x) conversion to the unit (${newUnitParent}) already exists`]}
         }
     }else{
         response.status = 403
@@ -100,7 +102,7 @@ export async function PUT({ url }) {
         response.message = {success: `${unitName} is ${isActive ? 'now' : 'no longer'} active`}
     }else{
         response.status = 403
-        response.message = {error: `the unit (${unitName}) does not exist`}
+        response.message = {error: [`the unit (${unitName}) does not exist`]}
     }
 
     return new Response(JSON.stringify(response.message),{status: response.status})

@@ -11,7 +11,7 @@ const companyName = "Test Restaurant"
 const companies = db.collection('Companies')
 let response = {
     status: 500,
-    message: {error:"an error occured on the server"}
+    message: {error:["an error occured on the server"]}
 }
 async function findAllTaxTypes(){
     return await companies.findOne({name: companyName}, { projection: { _id: false, taxes: true} })
@@ -29,11 +29,11 @@ export async function GET({ url }) {
         response.message = {success: (await findAllTaxTypes()).taxes}
     }else if(find === "one"){
         const tax = await findTaxType(taxType)
-        const msg = tax ? { success: tax }: { fail :'tax not found' }
+        const msg = tax ? { success: tax }: { fail :"tax not found" }
         response.message = msg
     }else{
         response.status = 403
-        response.message = {error: "find parameter not defined"}
+        response.message = {error: ["find parameter not defined"]}
     }
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
@@ -47,7 +47,7 @@ export async function POST({ url }) {
     if(errors.length === 0){
         if(await findTaxType(newTax.type)){
             response.status = 403
-            response.message = {error: `${newTax.type} tax type already exist`}
+            response.message = {error: [`${newTax.type} tax type already exist`]}
         }else{
            await companies.updateOne({name: companyName},{$push : {taxes: newTax }})
            response.status = 200
@@ -74,7 +74,7 @@ export async function PUT({ url }) {
             response.message = {success: updateTax}
         }else{
            response.status = 403
-           response.message = {error: `${updateTax.type} tax type does not exist`}
+           response.message = {error: [`${updateTax.type} tax type does not exist`]}
         }
     }else{
         response.status = 403
@@ -93,7 +93,7 @@ export async function DELETE({ url }) {
         response.message = {success: `${taxType} deleted`} 
     }else{
        response.status = 403
-       response.message = {error: `${taxType} tax type does not exist`}
+       response.message = {error: [`${taxType} tax type does not exist`]}
     }
     
     return new Response(JSON.stringify(response.message),{status: response.status})

@@ -53,18 +53,6 @@ class Ingredient{
         averagePrice
     }
 }
-class Article{
-    constructor(articleName, articleGroup, unitOfMeasure, defaultEdiblePortion, suppliers = [], pictures = []){
-        articleName,
-        articleGroup,
-        unitOfMeasure,
-        defaultEdiblePortion,
-        suppliers,
-        pictures,
-        allergens,
-        labels
-    }
-}
 class Supplier{
     constructor(supplierName, phoneNumber, email){
         supplierName,
