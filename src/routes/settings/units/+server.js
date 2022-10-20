@@ -1,5 +1,6 @@
 import { clientDb as db } from "$db/mongo"
 import { verifyUnit } from "$lib/verifyInput"
+import { companies, companyName } from "$db/company"
 
 class UnitOfMeasure{
     constructor(unit, name, type, conversion, isActive = true){
@@ -11,8 +12,6 @@ class UnitOfMeasure{
     }
 }
 
-const companyName = "Test Restaurant"
-const companies = db.collection('Companies')
 const units = db.collection('Units')
 let response = {
     status: 500,
@@ -23,6 +22,10 @@ async function findAllUnits(){
     const customUnits = await companies.findOne({name: companyName}, { projection: { _id: false, units: true} })
     const globalUnits = await units.find({}, { projection: { _id: false} }).toArray()
     return {globalUnits: globalUnits , customUnits: customUnits.units}
+}
+async function findAllActiveCustomUnits(){
+    const data = await findAllUnits()
+    return data.customUnits.filter(customUnit => customUnit.isActive === true)
 }
 async function findOneCustomUnitByName(unitName){
     const data = await findAllUnits()
@@ -39,15 +42,16 @@ async function findOneUnitByName(unitName){
 
 export async function GET({ url }) {
     response.status = 200
-    let unit = url.searchParams.get('unit') ?? ''
-    unit = unit.trim()
+    let unitName = url.searchParams.get('name') ?? ''
+    unitName = unitName.trim()
     const find = url.searchParams.get('find') ?? ''
     if(find === "all"){
         response.message = {success: await findAllUnits()}
+    }else if(find === "active"){
+        response.message = {success: await findAllActiveCustomUnits()}
     }else if(find === "one"){
-        const foundUnit = await findOneCustomUnitByName(unit)
-        const msg = foundUnit ? { success: foundUnit }: { fail :'unit not found' }
-        response.message = msg
+        const foundUnit = await findOneCustomUnitByName(unitName)
+        response.message = foundUnit ? { success: foundUnit }: { fail :'unit not found' }
     }else{
         response.status = 403
         response.message = {error: ["find parameter not defined"]}
@@ -70,7 +74,7 @@ export async function POST({ url }) {
     if(errors.length === 0){
         if((!await findOneCustomUnitByName(newUnit.name)) && (!await findOneUnit(newUnit.unit))){
             const parent = await findOneCustomUnitByName(newUnitParent) || await findOneUnitByName(newUnitParent)
-            if(parent){
+            if(parent && parent.isActive){
                 newUnit.type = parent.type
                 newUnit.conversion = newUnitConversion * parent.conversion
                 await companies.updateOne({name: companyName},{$push : {units: newUnit }})
@@ -78,7 +82,7 @@ export async function POST({ url }) {
                 response.message = { success: newUnit }
             }else{
                 response.status = 403
-                response.message = {error: [`The unit's parent does not exist`]}
+                response.message = {error: [`The unit's parent does not exist or is no longer active`]}
             } 
         }else{
             response.status = 403
@@ -92,9 +96,14 @@ export async function POST({ url }) {
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
 export async function PUT({ url }) {
-    let unitName = url.searchParams.get('unit') ?? ''
+    let unitName = url.searchParams.get('name') ?? ''
     unitName = unitName.trim().toLowerCase()
     let isActive = url.searchParams.get('active') ?? ''
+    if(isActive !== "true" && isActive !== "false"){
+        response.status = 403
+        response.message = {error:['active parameter not defined']}
+        return new Response(JSON.stringify(response.message),{status: response.status})
+    }
     isActive = isActive === "false" ? false : true
     if(await findOneCustomUnitByName(unitName)){
         await companies.updateOne({name: companyName, "units.name" : unitName },{$set: {"units.$.isActive": isActive} })

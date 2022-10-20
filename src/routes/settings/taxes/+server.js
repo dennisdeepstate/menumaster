@@ -1,5 +1,5 @@
-import { clientDb as db } from "$db/mongo"
 import { verifyTax } from "$lib/verifyInput"
+import { companies, companyName } from "$db/company"
 
 class Tax{
     constructor(type, rate){
@@ -7,8 +7,7 @@ class Tax{
         this.rate = rate
     }
 }
-const companyName = "Test Restaurant"
-const companies = db.collection('Companies')
+
 let response = {
     status: 500,
     message: {error:["an error occured on the server"]}
@@ -29,8 +28,7 @@ export async function GET({ url }) {
         response.message = {success: (await findAllTaxTypes()).taxes}
     }else if(find === "one"){
         const tax = await findTaxType(taxType)
-        const msg = tax ? { success: tax }: { fail :"tax not found" }
-        response.message = msg
+        response.message = tax ? { success: tax }: { fail :"tax not found" }
     }else{
         response.status = 403
         response.message = {error: ["find parameter not defined"]}
