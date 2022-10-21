@@ -60,12 +60,5 @@ class Supplier{
         email
     }
 }
-class ArticleGroup{
-    constructor(groupName, description){
-        groupName,
-        description,
-        allergens,
-        labels
-    }
-}
+
 

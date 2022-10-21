@@ -1,6 +1,7 @@
 import { clientDb as db } from "$db/mongo"
 import { verifyUnit } from "$lib/verifyInput"
 import { companies, companyName } from "$db/company"
+import { subUnitLimit } from "$db/company"
 
 class UnitOfMeasure{
     constructor(unit, name, type, conversion, isActive = true){
@@ -27,6 +28,11 @@ async function findAllActiveCustomUnits(){
     const data = await findAllUnits()
     return data.customUnits.filter(customUnit => customUnit.isActive === true)
 }
+async function findEligibleUnitParents(){
+    const data = await findAllUnits()
+    let eligibleCustomUnitParents = data.customUnits.filter(customUnit => customUnit.name.split('*').length <= subUnitLimit + 1)
+    return [...data.globalUnits,...eligibleCustomUnitParents]
+}
 async function findOneCustomUnitByName(unitName){
     const data = await findAllUnits()
     return data.customUnits.find(customUnit => customUnit.name === unitName.toLowerCase())
@@ -43,12 +49,14 @@ async function findOneUnitByName(unitName){
 export async function GET({ url }) {
     response.status = 200
     let unitName = url.searchParams.get('name') ?? ''
-    unitName = unitName.trim()
+    unitName = unitName.trim().toLowerCase()
     const find = url.searchParams.get('find') ?? ''
     if(find === "all"){
         response.message = {success: await findAllUnits()}
     }else if(find === "active"){
         response.message = {success: await findAllActiveCustomUnits()}
+    }else if(find === "parents"){
+        response.message = {success: await findEligibleUnitParents()}
     }else if(find === "one"){
         const foundUnit = await findOneCustomUnitByName(unitName)
         response.message = foundUnit ? { success: foundUnit }: { fail :'unit not found' }
@@ -69,30 +77,29 @@ export async function POST({ url }) {
     newUnitParent = newUnitParent.trim().toLowerCase()
 
     let newUnit = new UnitOfMeasure(newUnitAlias, `${newUnitAlias}*${newUnitConversion}_${newUnitParent}` , newUnitType , newUnitConversion)
-    const errors = verifyUnit(newUnit)
-
-    if(errors.length === 0){
-        if((!await findOneCustomUnitByName(newUnit.name)) && (!await findOneUnit(newUnit.unit))){
-            const parent = await findOneCustomUnitByName(newUnitParent) || await findOneUnitByName(newUnitParent)
-            if(parent && parent.isActive){
-                newUnit.type = parent.type
-                newUnit.conversion = newUnitConversion * parent.conversion
-                await companies.updateOne({name: companyName},{$push : {units: newUnit }})
-                response.status = 200
-                response.message = { success: newUnit }
-            }else{
-                response.status = 403
-                response.message = {error: [`The unit's parent does not exist or is no longer active`]}
-            } 
+    let errors = verifyUnit(newUnit)
+    if(newUnitParent.split('*').length > subUnitLimit + 1){
+        errors.push('sub-unit limit cannot be exceeded')
+    }
+    if(errors.length !== 0){
+        return new Response(JSON.stringify({error: errors}),{status: 403})
+    }
+    if((!await findOneCustomUnitByName(newUnit.name)) && (!await findOneUnit(newUnit.unit))){
+        const parent = await findOneCustomUnitByName(newUnitParent) || await findOneUnitByName(newUnitParent)
+        if(parent && (parent.isActive || parent.name.split('*').length === 1)){
+            newUnit.type = parent.type
+            newUnit.conversion = newUnitConversion * parent.conversion
+            await companies.updateOne({name: companyName},{$push : {units: newUnit }})
+            response.status = 200
+            response.message = { success: newUnit }
         }else{
             response.status = 403
-            response.message = {error: [`The unit (${newUnit.unit}) with a (${newUnit.conversion}x) conversion to the unit (${newUnitParent}) already exists`]}
-        }
+            response.message = {error: [`The unit's parent does not exist or is no longer selectable`]}
+        } 
     }else{
         response.status = 403
-        response.message = {error: errors} 
+        response.message = {error: [`The unit ${newUnit.name.replaceAll('*', ' X ').replaceAll('_','')} already exists`]}
     }
-
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
 export async function PUT({ url }) {
@@ -108,10 +115,10 @@ export async function PUT({ url }) {
     if(await findOneCustomUnitByName(unitName)){
         await companies.updateOne({name: companyName, "units.name" : unitName },{$set: {"units.$.isActive": isActive} })
         response.status = 200
-        response.message = {success: `${unitName} is ${isActive ? 'now' : 'no longer'} active`}
+        response.message = {success: `the unit ${unitName.replaceAll('*', ' X ').replaceAll('_','')} is ${isActive ? 'now' : 'no longer'} selectable`}
     }else{
         response.status = 403
-        response.message = {error: [`the unit (${unitName}) does not exist`]}
+        response.message = {error: [`the unit ${unitName.replaceAll('*', ' X ').replaceAll('_','')} does not exist`]}
     }
 
     return new Response(JSON.stringify(response.message),{status: response.status})
