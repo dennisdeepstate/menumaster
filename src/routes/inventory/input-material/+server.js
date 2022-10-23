@@ -48,7 +48,7 @@ async function getGroup(groupName){
     return await response.json()
 }
 async function findPrecedingMaterial(groupName){
-    return await inputMaterials.find({ author:companyName, group: groupName}, { projection: { _id: false} }).sort({code: -1}).limit(1).toArray()
+    return (await inputMaterials.find({ author:companyName, group: groupName}, { projection: { _id: false} }).sort({code: -1}).limit(1).toArray())[0]
 }
 export async function GET({ url }) {
     let materialId = url.searchParams.get('id') ?? ''
@@ -89,11 +89,15 @@ export async function POST({ url }) {
     const group = (await getGroup(newMaterial.group)).success
     if(!baseUnit || !baseUnit.isActive){
         errors.push('the unit selected does not exist or is no longer selectable')
+    }else{
+        const findBaseUnit = baseUnit.name.split('_')
+        newMaterial.baseUnit = findBaseUnit[findBaseUnit.length - 1]
+        newMaterial.units.push({unit: newMaterialBaseUnit, owner: 1})
     }
     if(!group || !group.isActive){
         errors.push('the group selected does not exist or is no longer selectable')
     }else{
-        const precedingMaterial = (await findPrecedingMaterial(group.name))[0]
+        const precedingMaterial = (await findPrecedingMaterial(group.name))
         precedingMaterialCode = precedingMaterial ? precedingMaterial.code : (group.code * 1000)
         if(precedingMaterialCode >= ((group.code * 1000) + 999)){
             errors.push(`material codes in the (${group.name}) group have reached the limit of ${((group.code * 1000) + 999)}`)     
