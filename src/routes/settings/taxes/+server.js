@@ -22,15 +22,16 @@ async function findOneTax(taxName){
     return await taxes.findOne({name: taxName, author: companyName}, { projection: { _id: false} })
 }
 export async function GET({ url }) {
-    response.status = 200
     let taxName = url.searchParams.get('name') ?? ''
     taxName = taxName.trim().toUpperCase()
     const find = url.searchParams.get('find') ?? ''
     if(find === "all"){
         const foundTaxes = await findAllTaxes()
+        response.status = 200
         response.message = foundTaxes.length > 0 ? {success: foundTaxes} : {fail: 'taxes not found'}
     }else if(find === "one"){
         const foundTax = await findOneTax(taxName)
+        response.status = 200
         response.message = foundTax ? { success: foundTax }: { fail :"tax not found" }
     }else{
         response.status = 403

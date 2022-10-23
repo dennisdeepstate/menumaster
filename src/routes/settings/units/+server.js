@@ -38,18 +38,24 @@ async function findOneUnitByName(unitName){
 }
 
 export async function GET({ url }) {
-    response.status = 200
     let unitName = url.searchParams.get('name') ?? ''
     unitName = unitName.trim().toLowerCase()
     const find = url.searchParams.get('find') ?? ''
     if(find === "all"){
-        response.message = {success: await findAllUnits()}
+        const foundUnits = await findAllUnits()
+        response.status = 200
+        response.message = foundUnits ? {success: foundUnits} : {fail: 'units not found'}
     }else if(find === "active"){
-        response.message = {success: await findAllActiveUnits()}
+        const foundUnits = await findAllActiveUnits()
+        response.status = 200
+        response.message = foundUnits ? {success: foundUnits} : {fail: 'units not found'}
     }else if(find === "parents"){
-        response.message = {success: await findEligibleUnitParents()}
+        const foundUnits = await findEligibleUnitParents()
+        response.status = 200
+        response.message = foundUnits ? {success: foundUnits} : {fail: 'units not found'}
     }else if(find === "one"){
         const foundUnit = await findOneUnitByName(unitName)
+        response.status = 200
         response.message = foundUnit ? { success: foundUnit }: { fail :'unit not found' }
     }else{
         response.status = 403

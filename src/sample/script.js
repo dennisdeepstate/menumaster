@@ -62,3 +62,14 @@ class Supplier{
 }
 
 
+// class InventoryTransaction{
+//     constructor(date, from, to, type, qty, unit, ref, trackingdetails)
+// }
+// class SupplierTransactions{
+//     constructor(source, rate, tax, discounts, productName, brand, labels, conversion)
+// }
+//intermediate(supplier is internal)
+//transactions (purchases, returns, transfers, production-, **sales**, wastage, adjustment+-)
+//tracking details = expiry, unit, cost, requestedby.date, issuedby.date, receivedby.date, label, authorizedby, supplier
+//costcentre name closing stock
+//labels precaution info

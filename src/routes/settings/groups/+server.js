@@ -4,8 +4,9 @@ import { verifyGroup } from "$lib/verifyInput"
 import { subGroupLimit } from "$db/company"
 
 class Group{
-    constructor(name, ancestry, description, type, author=companyName, isActive = true){
+    constructor(name, code, ancestry, description, type, author=companyName, isActive = true){
         this.name = name,
+        this.code = code,
         this.ancestry = ancestry,
         this.description = description,
         this.type = type,
@@ -38,9 +39,11 @@ async function findOneGroup(groupName, type){
 async function findOneGroupByAncestry(groupAncestry, type){
     return await groups.findOne({ author:  companyName, type: type, ancestry: groupAncestry }, { projection: { _id: false} })
 }
+async function findPrecedingGroup(){
+    return (await groups.find({ author:  companyName}, { projection: { _id: false} }).sort({code: -1}).limit(1).toArray())[0]
+}
 
 export async function GET({ url }) {
-    response.status = 200
     let groupName = url.searchParams.get('name') ?? ''
     groupName = groupName.trim().toLowerCase()
     const find = url.searchParams.get('find') ?? ''
@@ -50,18 +53,22 @@ export async function GET({ url }) {
     }
     if(find === "all"){
         const foundGroups = await findAllGroups(type)
+        response.status = 200
         response.message = foundGroups.length > 0 ? {success: foundGroups} : {fail: 'groups not found'}
     }
     if(find === "active"){
         const foundGroups = await findAllActiveGroups(type)
+        response.status = 200
         response.message = foundGroups.length > 0 ? {success: foundGroups} : {fail: 'groups not found'}
     }
     if(find === "parents"){
         const foundGroups = await findAllEligibleGroupParents(type)
+        response.status = 200
         response.message = foundGroups.length > 0 ? {success: foundGroups} : {fail: 'groups not found'}
     }
     if(find === "one"){
         const foundGroup = await findOneGroup(groupName, type)
+        response.status = 200
         response.message = foundGroup ? { success: foundGroup }: { fail: 'group not found' }
     }
     return new Response(JSON.stringify(response.message),{status: response.status})
@@ -78,7 +85,7 @@ export async function POST({ url }) {
     let newGroupType = url.searchParams.get('type') ?? ''
     newGroupType = newGroupType.trim().toLowerCase()
 
-    let newGroup = new Group(newGroupName, `${newGroupParent === '' ? '' : newGroupParent + '*'}${newGroupName}` , newGroupDescription, newGroupType)
+    let newGroup = new Group(newGroupName, 1,`${newGroupParent === '' ? '' : newGroupParent + '*'}${newGroupName}` , newGroupDescription, newGroupType)
     let errors = verifyGroup(newGroup)
     if(!groupTypes.includes(newGroup.type)){
         errors.push(`group type must be one of (${groupTypes})`)
@@ -86,12 +93,18 @@ export async function POST({ url }) {
     if(newGroupParent.split('*').length > subGroupLimit + 1){
         errors.push(`subgroup limit cannot be exceeded`)
     }
+    const precedingGroup = await findPrecedingGroup()
+    let precedingGroupCode = precedingGroup ? precedingGroup.code : 0
+    if(precedingGroupCode >= 999){
+        errors.push(`group codes have reached the limit of 999`)        
+    }
     if(errors.length !== 0){
         return new Response(JSON.stringify({error: errors}),{status: 403})
     }
     if(!await findOneGroup(newGroup.name, newGroup.type)){
         const parent = await findOneGroupByAncestry(newGroupParent, newGroup.type)
         if((parent && parent.isActive) || newGroup.name === newGroup.ancestry){
+            newGroup.code = precedingGroupCode + 1
             await groups.insertOne(newGroup)
             response.status = 200
             response.message = { success: newGroup }

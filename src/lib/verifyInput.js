@@ -1,11 +1,12 @@
-const taxTypeRegex = /(^[a-zA-Z\d][a-zA-Z\d\s]{0,20}[a-zA-Z\d]$)/
+const taxNameRegex = /(^[a-zA-Z\d][a-zA-Z\d\s]{0,14}[a-zA-Z\d]$)/
 const unitRegex = /(^[a-zA-Z\d]{1,12}$)/
-const groupNameRegex = /^[ A-Za-z\d\s~!_@$%^()=\[\]{}|'";:\\?<>.,\/#&+-]{2,20}$/
+const groupNameRegex = /^[ A-Za-z\d\s~!_@$%^()=\[\]{}|'";:\\?<>.,\/#&+-]{2,32}$/
+const materialNameRegex = /^[ A-Za-z\d\s~!_@$%^*()=\[\]{}|'";:\\?<>.,\/#&+-]{2,64}$/
 const descriptionRegex = /^[ A-Za-z\d\s~!_@$%^*()=\[\]{}|'";:\\?<>.,\/#&+-]{3,144}$/
 
 function verifyTax(tax){
     let errors = []
-    if(!taxTypeRegex.test(tax.type)) errors.push('tax name must have more than 2 and not more than 20 characters of alphabets and numbers only')
+    if(!taxNameRegex.test(tax.name)) errors.push('tax name must have more than 1 and not more than 16 characters of alphabets and numbers only')
     if(tax.rate <= 0 || isNaN(tax.rate)) errors.push('tax must be greater than 0')
     return errors
 }
@@ -22,5 +23,10 @@ function verifyGroup(group){
     if(!descriptionRegex.test(group.description)) errors.push('description must contain more than 2 and not more than 144 characters')
     return errors
 }
+function verifyInputMaterial(material){
+    let errors = []
+    if(!materialNameRegex.test(material.name))errors.push('material name must contain more than 1 and not more than 64 characters')
+    return errors
+}
 
-export { verifyTax, verifyUnit, verifyGroup }
+export { verifyTax, verifyUnit, verifyGroup, verifyInputMaterial }
