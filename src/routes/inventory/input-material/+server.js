@@ -1,24 +1,23 @@
-class Material{
-    constructor(materialName, materialGroup, baseUnitType, materialDescription, units=[], inventoryTransactions = [], suppliers = [], pictures = [], labels = [], activeCentres=[]){
-        this.materialName = materialName,
-        this.materialGroup = materialGroup,
-        this.baseUnitType = baseUnitType,
+class InputMaterial{
+    constructor(name, group, baseUnit, units=[], inventoryTransactions = [], subInputs = [], precautions = [], activeCentres=[], isActive=true){
+        this.name = name,
+        this.group = group,
+        this.baseUnit = baseUnit,
         this.units = units,
         this.inventoryTransactions = inventoryTransactions,
-        this.materialDescription = materialDescription,
-        this.inputs = suppliers,
-        this.pictures = pictures,
-        this.labels = labels,
-        this.activeCentres = activeCentres
+        this.subInputs = subInputs,
+        this.precautions = precautions,
+        this.activeCentres = activeCentres,
+        this.isActive = isActive
     }
 }
 
-class InventoryTransaction{
-    constructor(date, from, to, type, qty, unit, ref, trackingdetails)
-}
-class SupplierTransactions{
-    constructor(source, rate, tax, discounts, productName, brand, labels, conversion)
-}
+// class InventoryTransaction{
+//     constructor(date, from, to, type, qty, unit, ref, trackingdetails)
+// }
+// class SupplierTransactions{
+//     constructor(source, rate, tax, discounts, productName, brand, labels, conversion)
+// }
 //intermediate(supplier is internal)
 //transactions (purchases, returns, transfers, production-, **sales**, wastage, adjustment+-)
 //tracking details = expiry, unit, cost, requestedby.date, issuedby.date, receivedby.date, label, authorizedby, supplier

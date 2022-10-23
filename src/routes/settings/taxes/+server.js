@@ -1,34 +1,37 @@
+import { clientDb as db} from "$db/mongo"
 import { verifyTax } from "$lib/verifyInput"
-import { companies, companyName } from "$db/company"
+import { companyName } from "$db/company"
 
 class Tax{
-    constructor(type, rate){
-        this.type = type,
-        this.rate = rate
+    constructor(name, rate, author=companyName){
+        this.name = name,
+        this.rate = rate,
+        this.author = author
     }
 }
+const taxes = db.collection('Taxes')
 
 let response = {
     status: 500,
     message: {error:["an error occured on the server"]}
 }
-async function findAllTaxTypes(){
-    return await companies.findOne({name: companyName}, { projection: { _id: false, taxes: true} })
+async function findAllTaxes(){
+    return await taxes.find({author: companyName}, { projection: { _id: false} }).toArray()
 }
-async function findTaxType(taxType){
-    const data = (await findAllTaxTypes()).taxes
-    return data.find(tax => tax.type === taxType.toUpperCase())
+async function findOneTax(taxName){
+    return await taxes.findOne({name: taxName, author: companyName}, { projection: { _id: false} })
 }
 export async function GET({ url }) {
     response.status = 200
-    let taxType = url.searchParams.get('type') ?? ''
-    taxType = taxType.trim()
+    let taxName = url.searchParams.get('name') ?? ''
+    taxName = taxName.trim().toUpperCase()
     const find = url.searchParams.get('find') ?? ''
     if(find === "all"){
-        response.message = {success: (await findAllTaxTypes()).taxes}
+        const foundTaxes = await findAllTaxes()
+        response.message = foundTaxes.length > 0 ? {success: foundTaxes} : {fail: 'taxes not found'}
     }else if(find === "one"){
-        const tax = await findTaxType(taxType)
-        response.message = tax ? { success: tax }: { fail :"tax not found" }
+        const foundTax = await findOneTax(taxName)
+        response.message = foundTax ? { success: foundTax }: { fail :"tax not found" }
     }else{
         response.status = 403
         response.message = {error: ["find parameter not defined"]}
@@ -36,62 +39,58 @@ export async function GET({ url }) {
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
 export async function POST({ url }) {
-    let newTaxType = url.searchParams.get('type') ?? ''
-    newTaxType = newTaxType.trim()
+    let newTaxName = url.searchParams.get('name') ?? ''
+    newTaxName = newTaxName.trim().toUpperCase()
     let newTaxRate = url.searchParams.get('rate') ?? '0'
     newTaxRate = parseFloat(newTaxRate.trim())
-    const newTax = new Tax(newTaxType.toUpperCase(), newTaxRate)
+    const newTax = new Tax(newTaxName, newTaxRate)
     const errors = verifyTax(newTax)
-    if(errors.length === 0){
-        if(await findTaxType(newTax.type)){
-            response.status = 403
-            response.message = {error: [`${newTax.type} tax type already exist`]}
-        }else{
-           await companies.updateOne({name: companyName},{$push : {taxes: newTax }})
-           response.status = 200
-           response.message = { success: newTax }
-        }
+    if(errors.length > 0){
+        return new Response(JSON.stringify({error: errors}),{status: 403})
+    }
+    if(!await findOneTax(newTax.name)){
+        await taxes.insertOne(newTax)
+        response.status = 200
+        response.message = { success: newTax }
     }else{
         response.status = 403
-        response.message = {error: errors} 
+        response.message = {error: [`${newTax.name} tax already exists`]} 
     }
 
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
 export async function PUT({ url }) {
-    let taxType = url.searchParams.get('type') ?? ''
-    taxType = taxType.trim()
+    let taxName = url.searchParams.get('name') ?? ''
+    taxName = taxName.trim().toUpperCase()
     let newTaxRate = url.searchParams.get('rate') ?? ''
     newTaxRate = parseFloat(newTaxRate.trim())
-    const updateTax = {type: taxType.toUpperCase(), rate: newTaxRate}
+    const updateTax = new Tax(taxName, newTaxRate)
     const errors = verifyTax(updateTax)
-    if(errors.length === 0){
-        if(await findTaxType(taxType)){
-            await companies.updateOne({name: companyName, "taxes.type" : taxType },{$set: {"taxes.$.rate": newTaxRate} })
-            response.status = 200
-            response.message = {success: updateTax}
-        }else{
-           response.status = 403
-           response.message = {error: [`${updateTax.type} tax type does not exist`]}
-        }
+    if(errors.length > 0){
+        return new Response(JSON.stringify({error: errors}),{status: 403})
+    }
+    if(await findOneTax(updateTax.name)){
+        await taxes.updateOne({name: updateTax.name, author : companyName },{$set: {rate: updateTax.rate} })
+        response.status = 200
+        response.message = {success: updateTax}
     }else{
         response.status = 403
-        response.message = {error: errors} 
+        response.message = {error: [`${updateTax.name} tax does not exist`]}
     }
-
+   
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
 export async function DELETE({ url }) {
     response.status = 200
-    let taxType = url.searchParams.get('type') ?? ''
-    taxType = taxType.trim()
-    if(await findTaxType(taxType)){
-        await companies.updateOne({name: companyName},{$pull : {taxes: {type: taxType.toUpperCase()} }})
+    let taxName = url.searchParams.get('name') ?? ''
+    taxName = taxName.trim().toUpperCase()
+    if(await findOneTax(taxName)){
+        await taxes.deleteOne({name: taxName, author: companyName})
         response.status = 200
-        response.message = {success: `${taxType} deleted`} 
+        response.message = {success: `${taxName} deleted`} 
     }else{
        response.status = 403
-       response.message = {error: [`${taxType} tax type does not exist`]}
+       response.message = {error: [`${taxName} tax does not exist`]}
     }
     
     return new Response(JSON.stringify(response.message),{status: response.status})

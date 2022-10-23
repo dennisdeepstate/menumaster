@@ -1,14 +1,15 @@
 import { clientDb as db } from "$db/mongo"
 import { verifyUnit } from "$lib/verifyInput"
-import { companies, companyName } from "$db/company"
+import { companyName } from "$db/company"
 import { subUnitLimit } from "$db/company"
 
 class UnitOfMeasure{
-    constructor(unit, name, type, conversion, isActive = true){
+    constructor(unit, name, type, conversion, author=companyName, isActive = true){
         this.unit = unit,
         this.name = name,
         this.type = type,
         this.conversion = conversion,
+        this.author = author,
         this.isActive = isActive
     }
 }
@@ -20,30 +21,20 @@ let response = {
 }
 
 async function findAllUnits(){
-    const customUnits = await companies.findOne({name: companyName}, { projection: { _id: false, units: true} })
-    const globalUnits = await units.find({}, { projection: { _id: false} }).toArray()
-    return {globalUnits: globalUnits , customUnits: customUnits.units}
+    return await units.find({ $or: [ { author:  companyName }, { author: 0 } ] }, { projection: { _id: false} }).toArray()
 }
-async function findAllActiveCustomUnits(){
-    const data = await findAllUnits()
-    return data.customUnits.filter(customUnit => customUnit.isActive === true)
+async function findAllActiveUnits(){
+    return await units.find({ $or: [ { author:  companyName, isActive: true }, { author: 0 } ] }, { projection: { _id: false} }).toArray()
 }
 async function findEligibleUnitParents(){
-    const data = await findAllUnits()
-    let eligibleCustomUnitParents = data.customUnits.filter(customUnit => customUnit.name.split('*').length <= subUnitLimit + 1)
-    return [...data.globalUnits,...eligibleCustomUnitParents]
+    const data = await findAllActiveUnits()
+    return data.filter(unit => unit.name.split('*').length <= subUnitLimit + 1)
 }
 async function findOneCustomUnitByName(unitName){
-    const data = await findAllUnits()
-    return data.customUnits.find(customUnit => customUnit.name === unitName.toLowerCase())
-}
-async function findOneUnit(unit){
-    const data = await findAllUnits()
-    return data.globalUnits.find(globalUnit => globalUnit.unit === unit.toLowerCase())
+    return await units.findOne({ author:  companyName, name: unitName }, { projection: { _id: false} })
 }
 async function findOneUnitByName(unitName){
-    const data = await findAllUnits()
-    return data.globalUnits.find(globalUnit => globalUnit.name === unitName.toLowerCase())
+    return await units.findOne({ $or: [ { author:  companyName, name: unitName }, { author: 0, name: unitName} ] }, { projection: { _id: false} })
 }
 
 export async function GET({ url }) {
@@ -54,11 +45,11 @@ export async function GET({ url }) {
     if(find === "all"){
         response.message = {success: await findAllUnits()}
     }else if(find === "active"){
-        response.message = {success: await findAllActiveCustomUnits()}
+        response.message = {success: await findAllActiveUnits()}
     }else if(find === "parents"){
         response.message = {success: await findEligibleUnitParents()}
     }else if(find === "one"){
-        const foundUnit = await findOneCustomUnitByName(unitName)
+        const foundUnit = await findOneUnitByName(unitName)
         response.message = foundUnit ? { success: foundUnit }: { fail :'unit not found' }
     }else{
         response.status = 403
@@ -69,14 +60,12 @@ export async function GET({ url }) {
 export async function POST({ url }) {
     let newUnitAlias = url.searchParams.get('unit') ?? ''
     newUnitAlias = newUnitAlias.trim().toLowerCase()
-    let newUnitType = url.searchParams.get('type') ?? ''
-    newUnitType = newUnitType.trim().toLowerCase()
     let newUnitConversion = url.searchParams.get('conversion') ?? '0'
     newUnitConversion = parseFloat(newUnitConversion.trim())
     let newUnitParent = url.searchParams.get('parent') ?? ''
     newUnitParent = newUnitParent.trim().toLowerCase()
 
-    let newUnit = new UnitOfMeasure(newUnitAlias, `${newUnitAlias}*${newUnitConversion}_${newUnitParent}` , newUnitType , newUnitConversion)
+    let newUnit = new UnitOfMeasure(newUnitAlias, `${newUnitAlias}*${newUnitConversion}_${newUnitParent}` , 0 , newUnitConversion)
     let errors = verifyUnit(newUnit)
     if(newUnitParent.split('*').length > subUnitLimit + 1){
         errors.push('sub-unit limit cannot be exceeded')
@@ -84,12 +73,12 @@ export async function POST({ url }) {
     if(errors.length !== 0){
         return new Response(JSON.stringify({error: errors}),{status: 403})
     }
-    if((!await findOneCustomUnitByName(newUnit.name)) && (!await findOneUnit(newUnit.unit))){
-        const parent = await findOneCustomUnitByName(newUnitParent) || await findOneUnitByName(newUnitParent)
-        if(parent && (parent.isActive || parent.name.split('*').length === 1)){
+    if(!await findOneUnitByName(newUnit.name)){
+        const parent = await findOneUnitByName(newUnitParent)
+        if(parent && parent.isActive){
             newUnit.type = parent.type
             newUnit.conversion = newUnitConversion * parent.conversion
-            await companies.updateOne({name: companyName},{$push : {units: newUnit }})
+            await units.insertOne(newUnit)
             response.status = 200
             response.message = { success: newUnit }
         }else{
@@ -98,7 +87,7 @@ export async function POST({ url }) {
         } 
     }else{
         response.status = 403
-        response.message = {error: [`The unit ${newUnit.name.replaceAll('*', ' X ').replaceAll('_','')} already exists`]}
+        response.message = {error: [`The unit (${newUnit.name.replaceAll('*', ' X ').replaceAll('_','')}) already exists`]}
     }
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
@@ -113,12 +102,12 @@ export async function PUT({ url }) {
     }
     isActive = isActive === "false" ? false : true
     if(await findOneCustomUnitByName(unitName)){
-        await companies.updateOne({name: companyName, "units.name" : unitName },{$set: {"units.$.isActive": isActive} })
+        await units.updateOne({name: unitName, author: companyName },{$set: {isActive: isActive} })
         response.status = 200
-        response.message = {success: `the unit ${unitName.replaceAll('*', ' X ').replaceAll('_','')} is ${isActive ? 'now' : 'no longer'} selectable`}
+        response.message = {success: `the unit (${unitName.replaceAll('*', ' X ').replaceAll('_','')}) is ${isActive ? 'now' : 'no longer'} selectable`}
     }else{
         response.status = 403
-        response.message = {error: [`the unit ${unitName.replaceAll('*', ' X ').replaceAll('_','')} does not exist`]}
+        response.message = {error: [`the unit (${unitName.replaceAll('*', ' X ').replaceAll('_','')}) does not exist`]}
     }
 
     return new Response(JSON.stringify(response.message),{status: response.status})
