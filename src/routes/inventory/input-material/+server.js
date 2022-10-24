@@ -1,8 +1,8 @@
-import { clientDb as db } from "$db/mongo"
-import { companyName } from "$db/company"
+import { companyName, inputMaterials, findAllInputMaterials, findAllActiveInputMaterials, findOneInputMaterial, findOneInputMaterialByName, findPrecedingMaterial } from "$db/find"
 import { ObjectId } from "mongodb"
 import { verifyInputMaterial } from "$lib/verifyInput"
-import { BASE_URL } from "$env/static/private"
+import { findOneUnitByName } from "$db/find"
+import { findOneGroup } from "$db/find"
 
 class InputMaterial{
     constructor(name, code, group, baseUnit, units=[], brands = [], inventoryTransactions = [], precautions = [], activeCentres=[], author=companyName, isActive=true){
@@ -20,36 +20,12 @@ class InputMaterial{
     }
 }
 
-const inputMaterials = db.collection('InputMaterials')
 const finds = ["all", "active", "one"]
 let response = {
     status: 500,
     message: {error:["an error occured on the server"]}
 }
 
-async function findAllInputMaterials(){
-    return await inputMaterials.find({author: companyName}).toArray()
-}
-async function findAllActiveInputMaterials(){
-    return await inputMaterials.find({author: companyName, isActive: true}).toArray()
-}
-async function findOneInputMaterial(materialId){
-    return await inputMaterials.findOne({_id: ObjectId(materialId), author: companyName})
-}
-async function findOneInputMaterialByName(materialName){
-    return (await inputMaterials.find({name: materialName, author: companyName}).collation({ locale: 'en', strength: 2 }).toArray())[0]
-}
-async function getUnit(unitName){
-    const response = await fetch(`${BASE_URL}/settings/units/?find=one&name=${unitName}`, {method: 'GET'})
-    return await response.json()
-}
-async function getGroup(groupName){
-    const response = await fetch(`${BASE_URL}/settings/groups/?find=one&type=inputmaterial&name=${groupName}`, {method: 'GET'})
-    return await response.json()
-}
-async function findPrecedingMaterial(groupName){
-    return (await inputMaterials.find({ author:companyName, group: groupName}, { projection: { _id: false} }).sort({code: -1}).limit(1).toArray())[0]
-}
 export async function GET({ url }) {
     let materialId = url.searchParams.get('id') ?? ''
     materialId = materialId.trim().toLowerCase()
@@ -85,8 +61,8 @@ export async function POST({ url }) {
     newMaterialGroup = newMaterialGroup.trim().toLowerCase()
     let newMaterial = new InputMaterial(newMaterialName, 1, newMaterialGroup , newMaterialBaseUnit)
     let errors = verifyInputMaterial(newMaterial)
-    const baseUnit = (await getUnit(newMaterial.baseUnit)).success
-    const group = (await getGroup(newMaterial.group)).success
+    const baseUnit = await findOneUnitByName(newMaterial.baseUnit)
+    const group = await findOneGroup(newMaterial.group, "inputmaterial")
     if(!baseUnit || !baseUnit.isActive){
         errors.push('the unit selected does not exist or is no longer selectable')
     }else{

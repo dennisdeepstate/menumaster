@@ -1,6 +1,5 @@
-import { clientDb as db} from "$db/mongo"
+import { companyName, taxes, findAllTaxes, findOneTax} from "$db/find"
 import { verifyTax } from "$lib/verifyInput"
-import { companyName } from "$db/company"
 
 class Tax{
     constructor(name, rate, author=companyName){
@@ -9,17 +8,9 @@ class Tax{
         this.author = author
     }
 }
-const taxes = db.collection('Taxes')
-
 let response = {
     status: 500,
     message: {error:["an error occured on the server"]}
-}
-async function findAllTaxes(){
-    return await taxes.find({author: companyName}, { projection: { _id: false} }).toArray()
-}
-async function findOneTax(taxName){
-    return await taxes.findOne({name: taxName, author: companyName}, { projection: { _id: false} })
 }
 export async function GET({ url }) {
     let taxName = url.searchParams.get('name') ?? ''

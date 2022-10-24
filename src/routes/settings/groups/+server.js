@@ -1,5 +1,4 @@
-import { clientDb as db } from "$db/mongo"
-import { companyName } from "$db/company"
+import { companyName, groups, findAllGroups, findAllActiveGroups, findAllEligibleGroupParents, findOneGroup, findOneGroupByAncestry, findPrecedingGroup } from "$db/find"
 import { verifyGroup } from "$lib/verifyInput"
 import { subGroupLimit } from "$db/company"
 
@@ -19,29 +18,9 @@ let response = {
     status: 500,
     message: {error: ["an error occured on the server"]}
 }
-const groups = db.collection('Groups')
+
 const groupTypes = ["inputmaterial", "salesmaterial"]
 const finds = ["all", "parents", "active", "one"]
-
-async function findAllGroups(type){
-    return await groups.find({ author:  companyName, type: type }, { projection: { _id: false} }).toArray()
-}
-async function findAllActiveGroups(type){
-    return await groups.find({ author:  companyName, type: type, isActive: true }, { projection: { _id: false} }).toArray()
-}
-async function findAllEligibleGroupParents(type){
-    const data = await findAllActiveGroups(type)
-    return data.filter(group => group.ancestry.split("*").length <= subGroupLimit + 1)
-}
-async function findOneGroup(groupName, type){
-    return await groups.findOne({ author:  companyName, type: type, name: groupName }, { projection: { _id: false} })
-}
-async function findOneGroupByAncestry(groupAncestry, type){
-    return await groups.findOne({ author:  companyName, type: type, ancestry: groupAncestry }, { projection: { _id: false} })
-}
-async function findPrecedingGroup(){
-    return (await groups.find({ author:  companyName}, { projection: { _id: false} }).sort({code: -1}).limit(1).toArray())[0]
-}
 
 export async function GET({ url }) {
     let groupName = url.searchParams.get('name') ?? ''

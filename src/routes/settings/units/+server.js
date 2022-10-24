@@ -1,6 +1,5 @@
-import { clientDb as db } from "$db/mongo"
+import { companyName, units, findAllUnits, findAllActiveUnits, findEligibleUnitParents, findOneCustomUnitByName, findOneUnitByName } from "$db/find"
 import { verifyUnit } from "$lib/verifyInput"
-import { companyName } from "$db/company"
 import { subUnitLimit } from "$db/company"
 
 class UnitOfMeasure{
@@ -14,27 +13,9 @@ class UnitOfMeasure{
     }
 }
 
-const units = db.collection('Units')
 let response = {
     status: 500,
     message: {error: ["an error occured on the server"]}
-}
-
-async function findAllUnits(){
-    return await units.find({ $or: [ { author:  companyName }, { author: 0 } ] }, { projection: { _id: false} }).toArray()
-}
-async function findAllActiveUnits(){
-    return await units.find({ $or: [ { author:  companyName, isActive: true }, { author: 0 } ] }, { projection: { _id: false} }).toArray()
-}
-async function findEligibleUnitParents(){
-    const data = await findAllActiveUnits()
-    return data.filter(unit => unit.name.split('*').length <= subUnitLimit + 1)
-}
-async function findOneCustomUnitByName(unitName){
-    return await units.findOne({ author:  companyName, name: unitName }, { projection: { _id: false} })
-}
-async function findOneUnitByName(unitName){
-    return await units.findOne({ $or: [ { author:  companyName, name: unitName }, { author: 0, name: unitName} ] }, { projection: { _id: false} })
 }
 
 export async function GET({ url }) {
