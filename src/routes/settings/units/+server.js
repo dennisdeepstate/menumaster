@@ -78,7 +78,7 @@ export async function POST({ url }) {
     }
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
-export async function PUT({ url }) {
+export async function PATCH({ url }) {
     let unitName = url.searchParams.get('name') ?? ''
     unitName = unitName.trim().toLowerCase()
     let isActive = url.searchParams.get('active') ?? ''

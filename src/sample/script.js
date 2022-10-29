@@ -63,8 +63,11 @@ class Supplier{
 
 
 // class InventoryTransaction{
-//     constructor(date, from, to, type, qty, unit, ref, trackingdetails)
+//     constructor(date, from, to, type, qty, rate, brand, discount, unit, ref, trackingdetails)
 // }
+//units
+//active centers
+//
 // class SupplierTransactions{
 //     constructor(source, rate, tax, discounts, productName, brand, labels, conversion)
 // }

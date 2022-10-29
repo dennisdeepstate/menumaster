@@ -1,5 +1,6 @@
 import { clientDb as db } from "$db/mongo"
 import { companyName } from "$db/company"
+import { ObjectId } from "mongodb"
 
 const units = db.collection('Units')
 const groups = db.collection('Groups')
@@ -34,8 +35,8 @@ async function findAllEligibleGroupParents(type){
     const data = await findAllActiveGroups(type)
     return data.filter(group => group.ancestry.split("*").length <= subGroupLimit + 1)
 }
-async function findOneGroup(groupName, type){
-    return await groups.findOne({ author:  companyName, type: type, name: groupName }, { projection: { _id: false} })
+async function findOneGroup(groupName){
+    return await groups.findOne({ author: companyName, name: groupName }, { projection: { _id: false} })
 }
 async function findOneGroupByAncestry(groupAncestry, type){
     return await groups.findOne({ author:  companyName, type: type, ancestry: groupAncestry }, { projection: { _id: false} })

@@ -51,7 +51,7 @@ export async function POST({ url }) {
 
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
-export async function PUT({ url }) {
+export async function PATCH({ url }) {
     let taxName = url.searchParams.get('name') ?? ''
     taxName = taxName.trim().toUpperCase()
     let newTaxRate = url.searchParams.get('rate') ?? ''

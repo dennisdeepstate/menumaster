@@ -19,7 +19,7 @@ let response = {
     message: {error: ["an error occured on the server"]}
 }
 
-const groupTypes = ["inputmaterial", "salesmaterial"]
+const groupTypes = ["inputmaterial", "salesmaterial", "mro", "packaging"]
 const finds = ["all", "parents", "active", "one"]
 
 export async function GET({ url }) {
@@ -27,8 +27,16 @@ export async function GET({ url }) {
     groupName = groupName.trim().toLowerCase()
     const find = url.searchParams.get('find') ?? ''
     const type = url.searchParams.get('type') ?? ''
-    if(!finds.includes(find) || !groupTypes.includes(type)){
-        return new Response(JSON.stringify({error: ["'find' and 'type' parameters are required"]}),{status: 403})
+    if(!finds.includes(find)){
+        return new Response(JSON.stringify({error: ["'find' parameter is required"]}),{status: 403})
+    }
+    if(!groupTypes.includes(type) && find !== "one"){
+        return new Response(JSON.stringify({error: ["'type' parameter is required"]}),{status: 403})
+    }
+    if(find === "one"){
+        const foundGroup = await findOneGroup(groupName)
+        response.status = 200
+        response.message = foundGroup ? { success: foundGroup }: { fail: 'group not found' }
     }
     if(find === "all"){
         const foundGroups = await findAllGroups(type)
@@ -44,11 +52,6 @@ export async function GET({ url }) {
         const foundGroups = await findAllEligibleGroupParents(type)
         response.status = 200
         response.message = foundGroups.length > 0 ? {success: foundGroups} : {fail: 'groups not found'}
-    }
-    if(find === "one"){
-        const foundGroup = await findOneGroup(groupName, type)
-        response.status = 200
-        response.message = foundGroup ? { success: foundGroup }: { fail: 'group not found' }
     }
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
@@ -73,14 +76,14 @@ export async function POST({ url }) {
         errors.push(`subgroup limit cannot be exceeded`)
     }
     const precedingGroup = await findPrecedingGroup()
-    let precedingGroupCode = precedingGroup ? precedingGroup.code : 0
+    let precedingGroupCode = precedingGroup ? precedingGroup.code : 99
     if(precedingGroupCode >= 999){
         errors.push(`group codes have reached the limit of 999`)        
     }
     if(errors.length !== 0){
         return new Response(JSON.stringify({error: errors}),{status: 403})
     }
-    if(!await findOneGroup(newGroup.name, newGroup.type)){
+    if(!await findOneGroup(newGroup.name)){
         const parent = await findOneGroupByAncestry(newGroupParent, newGroup.type)
         if((parent && parent.isActive) || newGroup.name === newGroup.ancestry){
             newGroup.code = precedingGroupCode + 1
@@ -99,35 +102,45 @@ export async function POST({ url }) {
     return new Response(JSON.stringify(response.message),{status: response.status})
 }
 
-export async function PUT({ url }) {
+export async function PATCH({ url }) {
+
+    let changes = url.searchParams.get('changes') ?? ''
+    changes = changes.trim()
+    let changesArray = changes.split(',')
     let groupName = url.searchParams.get('name') ?? ''
     groupName = groupName.trim().toLowerCase()
     let groupDescription = url.searchParams.get('description') ?? ''
-    let isActive = url.searchParams.get('active') ?? ''
     groupDescription = groupDescription.trim().toLowerCase()
-    let groupType = url.searchParams.get('type') ?? ''
-    groupType = groupType.trim().toLowerCase()
-    let group = new Group(groupName, '', groupDescription, groupType)
+    let isActive = url.searchParams.get('active') ?? ''
+    let group = new Group(groupName, '', '', groupDescription)
     let errors = verifyGroup(group)
-    if(isActive !== "true" && isActive !== "false"){
+    let i = 0
+
+    const currentGroup = await findOneGroup(group.name)
+    const listOfChanges = ['description', 'isactive']
+
+    while(changesArray.length > 0 && !listOfChanges.includes(changesArray[i]) && i < changesArray.length){
+        errors.push(`${changesArray[i]} is not valid`)
+        i++
+    }
+
+    if(!currentGroup){
+        errors.push(`${group.name} does not exist`)
+    }
+    if(isActive !== "true" && isActive !== "false" && changes.includes('isactive')){
         errors.push('active parameter not defined')
     }
-    if(!groupTypes.includes(group.type)){
-        errors.push(`group type must be one of (${groupTypes})`)
-    }
     if(errors.length !== 0){
-        response.status = 403
-        response.message = errors
-        return new Response(JSON.stringify(response.message),{status: response.status})
+        return new Response(JSON.stringify({error:errors}),{status: 403})
     }
-    isActive = isActive === "true" ? true : false
-    if(await findOneGroup(groupName, group.type)){
-        await groups.updateOne({name: groupName, type: groupType },{$set: {description: groupDescription, isActive: isActive} })
-        response.status = 200
-        response.message = {success: `changes updated`}   
-    }else{
-        response.status = 403
-        response.message = {error: [`the group (${groupName}) does not exist`]}
+    if(changes.includes('isactive')){
+        group.isActive = isActive === "true" ? true : false
+        await groups.updateOne({name: group.name},{$set: {isActive: group.isActive} })
     }
-    return new Response(JSON.stringify(response.message),{status: response.status})
+    if(changes.includes('description')){
+        await groups.updateOne({name: group.name},{$set: {description: group.description} }) 
+    }
+
+    return new Response(JSON.stringify({success: `changes updated`}  ),{status: 200})
+
 }
