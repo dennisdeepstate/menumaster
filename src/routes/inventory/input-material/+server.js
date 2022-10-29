@@ -116,10 +116,14 @@ export async function PATCH({ url }) {
     const currentMaterial = await findOneInputMaterial(materialId)
     const materialWithName = await findOneInputMaterialByName(material.name)
 
+    if(changesArray.length > listOfChanges.length){
+        return new Response(JSON.stringify({error:['list of changes is too long']}),{status: 403})
+    }
     while(changesArray.length > 0 && !listOfChanges.includes(changesArray[i]) && i < changesArray.length){
         errors.push(`${changesArray[i]} is not valid`)
         i++
     }
+    
     if(!ObjectId.isValid(materialId) || !currentMaterial){
         errors.push('material id is not valid')
     }
