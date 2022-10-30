@@ -23,10 +23,10 @@ function verifyGroup(group){
     if(!descriptionRegex.test(group.description)) errors.push('description must contain more than 2 and not more than 144 characters')
     return errors
 }
-function verifyInputMaterial(material){
+function verifyMaterial(material){
     let errors = []
     if(!materialNameRegex.test(material.name))errors.push('material name must contain more than 1 and not more than 64 characters')
     return errors
 }
 
-export { verifyTax, verifyUnit, verifyGroup, verifyInputMaterial }
+export { verifyTax, verifyUnit, verifyGroup, verifyMaterial }

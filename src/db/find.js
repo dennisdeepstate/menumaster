@@ -3,8 +3,9 @@ import { companyName } from "$db/company"
 import { ObjectId } from "mongodb"
 
 const units = db.collection('Units')
+const groupTypes = ["inputmaterial", "salesmaterial", "mro", "packaging"]
 const groups = db.collection('Groups')
-const inputMaterials = db.collection('InputMaterials')
+const materials = db.collection('Materials')
 const taxes = db.collection('Taxes')
 
 /** units */
@@ -38,27 +39,30 @@ async function findAllEligibleGroupParents(type){
 async function findOneGroup(groupName){
     return await groups.findOne({ author: companyName, name: groupName }, { projection: { _id: false} })
 }
+async function findOneGroupByType(groupName, type){
+    return await groups.findOne({ author: companyName, name: groupName, type: type }, { projection: { _id: false} })
+}
 async function findOneGroupByAncestry(groupAncestry, type){
     return await groups.findOne({ author:  companyName, type: type, ancestry: groupAncestry }, { projection: { _id: false} })
 }
 async function findPrecedingGroup(){
     return (await groups.find({ author:  companyName}, { projection: { _id: false} }).sort({code: -1}).limit(1).toArray())[0]
 }
-/** inputMaterial */
-async function findAllInputMaterials(){
-    return await inputMaterials.find({author: companyName}).toArray()
+/** Material */
+async function findAllMaterials(type){
+    return await materials.find({author: companyName, type: type}).toArray()
 }
-async function findAllActiveInputMaterials(){
-    return await inputMaterials.find({author: companyName, isActive: true}).toArray()
+async function findAllActiveMaterials(){
+    return await materials.find({author: companyName, type: type, isActive: true}).toArray()
 }
-async function findOneInputMaterial(materialId){
-    return await inputMaterials.findOne({_id: ObjectId(materialId), author: companyName})
+async function findOneMaterial(materialId){
+    return await materials.findOne({_id: ObjectId(materialId), author: companyName})
 }
-async function findOneInputMaterialByName(materialName){
-    return (await inputMaterials.find({name: materialName, author: companyName}).collation({ locale: 'en', strength: 2 }).toArray())[0]
+async function findOneMaterialByName(materialName, type){
+    return (await materials.find({name: materialName, type: type, author: companyName}).collation({ locale: 'en', strength: 2 }).toArray())[0]
 }
 async function findPrecedingMaterial(groupName){
-    return (await inputMaterials.find({ author:companyName, group: groupName}, { projection: { _id: false} }).sort({code: -1}).limit(1).toArray())[0]
+    return (await materials.find({ author:companyName, group: groupName}, { projection: { _id: false} }).sort({code: -1}).limit(1).toArray())[0]
 }
 /** taxes */
 async function findAllTaxes(){
@@ -75,18 +79,20 @@ export{
     findEligibleUnitParents,
     findOneCustomUnitByName,
     findOneUnitByName,
+    groupTypes,
     groups,
     findAllGroups,
     findAllActiveGroups,
     findAllEligibleGroupParents,
     findOneGroup,
+    findOneGroupByType,
     findOneGroupByAncestry,
     findPrecedingGroup,
-    inputMaterials,
-    findAllInputMaterials,
-    findAllActiveInputMaterials,
-    findOneInputMaterial,
-    findOneInputMaterialByName,
+    materials,
+    findAllMaterials,
+    findAllActiveMaterials,
+    findOneMaterial,
+    findOneMaterialByName,
     findPrecedingMaterial,
     taxes,
     findAllTaxes,

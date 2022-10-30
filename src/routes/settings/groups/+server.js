@@ -1,4 +1,15 @@
-import { companyName, groups, findAllGroups, findAllActiveGroups, findAllEligibleGroupParents, findOneGroup, findOneGroupByAncestry, findPrecedingGroup } from "$db/find"
+import {
+    companyName,
+    groupTypes,
+    groups,
+    findAllGroups,
+    findAllActiveGroups,
+    findAllEligibleGroupParents,
+    findOneGroup,
+    findOneGroupByAncestry,
+    findPrecedingGroup
+} from "$db/find"
+
 import { verifyGroup } from "$lib/verifyInput"
 import { subGroupLimit } from "$db/company"
 
@@ -19,7 +30,6 @@ let response = {
     message: {error: ["an error occured on the server"]}
 }
 
-const groupTypes = ["inputmaterial", "salesmaterial", "mro", "packaging"]
 const finds = ["all", "parents", "active", "one"]
 
 export async function GET({ url }) {
@@ -123,24 +133,24 @@ export async function PATCH({ url }) {
         return new Response(JSON.stringify({error:['list of changes is too long']}),{status: 403})
     }
     while(changesArray.length > 0 && !listOfChanges.includes(changesArray[i]) && i < changesArray.length){
-        errors.push(`${changesArray[i]} is not valid`)
+        errors.push(`${changesArray[i]} is not a valid change parameter`)
         i++
     }
 
     if(!currentGroup){
         errors.push(`${group.name} does not exist`)
     }
-    if(isActive !== "true" && isActive !== "false" && changes.includes('isactive')){
+    if(isActive !== "true" && isActive !== "false" && changesArray.includes('isactive')){
         errors.push('active parameter not defined')
     }
     if(errors.length !== 0){
         return new Response(JSON.stringify({error:errors}),{status: 403})
     }
-    if(changes.includes('isactive')){
+    if(changesArray.includes('isactive')){
         group.isActive = isActive === "true" ? true : false
         await groups.updateOne({name: group.name},{$set: {isActive: group.isActive} })
     }
-    if(changes.includes('description')){
+    if(changesArray.includes('description')){
         await groups.updateOne({name: group.name},{$set: {description: group.description} }) 
     }
 
